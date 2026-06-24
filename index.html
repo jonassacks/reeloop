@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- ╔═══ EDIT: product name lives here (and in <h*>/footer below) ═══╗ -->
+  <title>Reeloop — Your reel, looping. Everywhere.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23E5484D'/><circle cx='16' cy='16' r='7' fill='none' stroke='white' stroke-width='2.5'/><circle cx='16' cy='16' r='1.6' fill='white'/></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #0a0a0b;
+      --bg-2:   #111114;
+      --fg:     #f4f4f2;
+      --muted:  rgba(255,255,255,0.52);
+      --faint:  rgba(255,255,255,0.10);
+      --accent: #E5484D;
+      --max:    1080px;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Inter', -apple-system, sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    h1, h2, h3 { font-family: 'Oswald', sans-serif; font-weight: 600; line-height: 1.08; letter-spacing: -0.01em; }
+
+    .wrap { width: 100%; max-width: var(--max); margin: 0 auto; padding: 0 clamp(1.25rem, 5vw, 2rem); }
+
+    /* ── Nav ──────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px; padding: 0 clamp(1.25rem, 5vw, 2rem);
+      background: rgba(10,10,11,0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--faint);
+    }
+    .brand { display: flex; align-items: center; gap: 0.55rem; font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1.2rem; letter-spacing: 0.02em; text-transform: uppercase; }
+    .brand .dot { width: 22px; height: 22px; border: 2.5px solid var(--accent); border-radius: 50%; position: relative; }
+    .brand .dot::after { content: ''; position: absolute; inset: 0; margin: auto; width: 4px; height: 4px; background: var(--accent); border-radius: 50%; }
+    .nav-actions { display: flex; align-items: center; gap: 0.5rem; }
+    .btn { font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 600; padding: 0.6rem 1.15rem; border-radius: 8px; cursor: pointer; border: 1px solid transparent; transition: transform 0.1s, background 0.15s, border-color 0.15s; display: inline-block; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn--ghost { color: var(--fg); border-color: var(--faint); background: transparent; }
+    .btn--ghost:hover { border-color: rgba(255,255,255,0.3); }
+    .btn--solid { background: var(--accent); color: #fff; }
+    .btn--solid:hover { background: #d23a3f; }
+    .btn--lg { font-size: 1rem; padding: 0.85rem 1.6rem; }
+
+    /* ── Hero ─────────────────────────────────── */
+    .hero { text-align: center; padding: clamp(3rem, 8vw, 6rem) 0 clamp(2rem, 5vw, 3.5rem); }
+    .eyebrow { display: inline-block; font-family: 'Oswald', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 1.25rem; }
+    .hero h1 { font-size: clamp(2.4rem, 6.5vw, 4.5rem); text-transform: uppercase; margin-bottom: 1.25rem; }
+    .hero p.sub { font-size: clamp(1.05rem, 2.2vw, 1.3rem); color: var(--muted); max-width: 620px; margin: 0 auto 2rem; }
+    .hero-cta { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+    .hero-note { margin-top: 1rem; font-size: 0.8rem; color: var(--muted); }
+
+    /* ── Demo player ──────────────────────────── */
+    .demo { padding-bottom: clamp(3rem, 7vw, 5rem); }
+    .demo-frame {
+      position: relative;
+      width: 100%; aspect-ratio: 16 / 9;
+      border-radius: 14px; overflow: hidden;
+      border: 1px solid var(--faint);
+      box-shadow: 0 30px 80px -30px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.03);
+      background: #000;
+    }
+    .demo-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+    .demo-cap { text-align: center; margin-top: 1rem; font-size: 0.8rem; color: var(--muted); }
+    .demo-cap code { font-family: 'SF Mono', monospace; background: rgba(255,255,255,0.06); padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.78rem; }
+
+    /* ── Section scaffolding ──────────────────── */
+    section.block { padding: clamp(3.5rem, 8vw, 6rem) 0; border-top: 1px solid var(--faint); }
+    .section-head { text-align: center; max-width: 640px; margin: 0 auto clamp(2.5rem, 5vw, 3.5rem); }
+    .section-head .eyebrow { margin-bottom: 0.9rem; }
+    .section-head h2 { font-size: clamp(1.8rem, 4vw, 2.8rem); text-transform: uppercase; margin-bottom: 0.9rem; }
+    .section-head p { color: var(--muted); font-size: 1.05rem; }
+
+    /* ── Steps ────────────────────────────────── */
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(1.25rem, 3vw, 2rem); }
+    .step { background: var(--bg-2); border: 1px solid var(--faint); border-radius: 12px; padding: 1.75rem; }
+    .step .num { font-family: 'Oswald', sans-serif; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 0.9rem; }
+    .step h3 { font-size: 1.2rem; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .step p { color: var(--muted); font-size: 0.95rem; }
+
+    /* ── Features ─────────────────────────────── */
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(1rem, 2.5vw, 1.75rem); }
+    .feature { padding: 1.5rem; border: 1px solid var(--faint); border-radius: 12px; }
+    .feature .ico { width: 34px; height: 34px; color: var(--accent); margin-bottom: 0.9rem; }
+    .feature h3 { font-size: 1.05rem; text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 0.4rem; }
+    .feature p { color: var(--muted); font-size: 0.9rem; }
+
+    /* ── Final CTA ────────────────────────────── */
+    .cta-final { text-align: center; }
+    .cta-final h2 { font-size: clamp(2rem, 5vw, 3.2rem); text-transform: uppercase; margin-bottom: 1rem; }
+    .cta-final p { color: var(--muted); font-size: 1.1rem; margin-bottom: 2rem; max-width: 520px; margin-left: auto; margin-right: auto; }
+
+    /* ── Footer ───────────────────────────────── */
+    footer { border-top: 1px solid var(--faint); padding: 2.5rem 0; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; color: var(--muted); font-size: 0.85rem; }
+    .footer-links { display: flex; gap: 1.5rem; }
+    .footer-links a:hover { color: var(--fg); }
+
+    @media (max-width: 760px) {
+      .steps, .features { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="brand" href="#"><span class="dot"></span>Reeloop</a>
+    <div class="nav-actions">
+      <a class="btn btn--ghost" href="#" data-action="signin">Sign in</a>
+      <a class="btn btn--solid" href="#" data-action="signup">Start free</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="wrap">
+      <span class="eyebrow">For filmmakers, editors & studios</span>
+      <h1>Your reel,<br>looping. Everywhere.</h1>
+      <p class="sub">Upload your clips and Reeloop turns them into one seamless, shuffling loop — hosted, fast, and embeddable on any site with a single line.</p>
+      <div class="hero-cta">
+        <a class="btn btn--solid btn--lg" href="#" data-action="signup">Start free</a>
+        <a class="btn btn--ghost btn--lg" href="#how">See how it works</a>
+      </div>
+      <p class="hero-note">No credit card. Free while in beta.</p>
+    </div>
+  </header>
+
+  <!-- Live demo = the real player -->
+  <div class="demo">
+    <div class="wrap">
+      <div class="demo-frame">
+        <iframe src="https://jonassacks.github.io/cine/embed.html"
+                allow="autoplay; fullscreen" loading="lazy" title="Reeloop live demo"></iframe>
+      </div>
+      <p class="demo-cap">A live Reeloop player — clips shuffle and loop seamlessly. Tap the speaker for sound.</p>
+    </div>
+  </div>
+
+  <section class="block" id="how">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">How it works</span>
+        <h2>Three steps to a living reel</h2>
+        <p>No editing software, no re-rendering, no manual stitching. Drop in clips and you're done.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="num">01</div>
+          <h3>Upload your clips</h3>
+          <p>Drag your footage into the dashboard. Mix lengths and shots — we handle the rest.</p>
+        </div>
+        <div class="step">
+          <div class="num">02</div>
+          <h3>We host & loop</h3>
+          <p>Streamed from a global CDN, shuffled into one seamless loop, with an optional soundtrack on top.</p>
+        </div>
+        <div class="step">
+          <div class="num">03</div>
+          <h3>Embed anywhere</h3>
+          <p>Get your own reel page plus a one-line embed for Squarespace, Webflow, or your portfolio.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Why Reeloop</span>
+        <h2>Built for moving images</h2>
+      </div>
+      <div class="features">
+        <div class="feature">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2v4M7 2v4M3 10h18M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m10 14 5 3-5 3z"/></svg>
+          <h3>Seamless looping</h3>
+          <p>Double-buffered playback — clips cut with no black flash, no stutter.</p>
+        </div>
+        <div class="feature">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          <h3>One embed, every site</h3>
+          <p>A single iframe that drops into Squarespace, Webflow, Notion, or raw HTML.</p>
+        </div>
+        <div class="feature">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          <h3>Your own reel page</h3>
+          <p>A clean, hosted page at your own link — share it as your showreel.</p>
+        </div>
+        <div class="feature">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <h3>Optional soundtrack</h3>
+          <p>Add a looping track that plays under your reel, on its own loop.</p>
+        </div>
+        <div class="feature">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><polyline points="21 3 21 9 15 9"/></svg>
+          <h3>Auto-updates</h3>
+          <p>Add or swap a clip and every embed refreshes automatically. No re-pasting.</p>
+        </div>
+        <div class="feature">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <h3>Fast, global CDN</h3>
+          <p>Clips stream from edge servers worldwide — quick starts, no buffering.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap cta-final">
+      <h2>Put your reel in motion</h2>
+      <p>Set up your looping showreel in minutes. Free while we're in beta.</p>
+      <a class="btn btn--solid btn--lg" href="#" data-action="signup">Start free</a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <a class="brand" href="#" style="font-size:1rem;"><span class="dot"></span>Reeloop</a>
+      <div class="footer-links">
+        <a href="#how">How it works</a>
+        <a href="#" data-action="signin">Sign in</a>
+        <a href="mailto:hello@reeloop.example">Contact</a>
+      </div>
+      <span>© 2026 Reeloop</span>
+    </div>
+  </footer>
+
+  <script>
+    // Placeholder hooks — wired to Clerk auth in the next phase.
+    document.querySelectorAll('[data-action]').forEach(el => {
+      el.addEventListener('click', e => {
+        e.preventDefault();
+        const action = el.getAttribute('data-action');
+        alert('“' + action + '” will connect to sign-up/login in the next build phase.');
+      });
+    });
+  </script>
+
+</body>
+</html>

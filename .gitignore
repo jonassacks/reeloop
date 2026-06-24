@@ -1,0 +1,9 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Local env / secrets (for later phases)
+.dev.vars
+.env
+.env.*
+node_modules/
