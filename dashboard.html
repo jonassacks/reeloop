@@ -47,6 +47,8 @@
 
     /* Clips */
     .clips-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem; }
+    .clips-head-left { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+    .order-hint { font-size: 0.72rem; color: var(--muted); }
     .count { font-size: 0.8rem; color: var(--muted); }
     .count b { color: var(--fg); }
     .dropzone { border: 1.5px dashed var(--line); border-radius: 12px; padding: 2rem; text-align: center; color: var(--muted); transition: border-color .15s, background .15s; cursor: pointer; }
@@ -57,6 +59,8 @@
     .clip-list { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1rem; }
     .clip { display: flex; align-items: center; gap: 0.85rem; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem; transition: box-shadow .15s, opacity .15s; }
     .clip.dragging { opacity: 0.5; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+    .clip-num { font-family: 'Oswald', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--muted); min-width: 20px; text-align: center; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    .clip-list.shuffled .clip-num { opacity: 0.35; }
     .handle { cursor: grab; color: var(--muted); padding: 0 0.15rem; flex-shrink: 0; }
     .handle:active { cursor: grabbing; }
     .handle svg { width: 16px; height: 16px; display: block; }
@@ -80,7 +84,7 @@
     .card { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem; }
 
     /* Preview */
-    .preview { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 9px; overflow: hidden; border: 1px solid var(--line); }
+    .preview { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; overflow: hidden; border: 1px solid var(--line); }
     .pv-layer { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .25s; }
     .pv-layer.active { opacity: 1; }
     .pv-name { position: absolute; bottom: 0.6rem; left: 0.7rem; font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.7); opacity: 0; transition: opacity .4s; pointer-events: none; max-width: calc(100% - 80px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Oswald'; }
@@ -170,7 +174,10 @@
     <!-- LEFT: clips -->
     <div class="editor">
       <div class="clips-head">
-        <span class="col-title" style="margin:0;">Clips</span>
+        <div class="clips-head-left">
+          <span class="col-title" style="margin:0;">Loop order</span>
+          <span class="order-hint" id="order-hint">Plays top to bottom</span>
+        </div>
         <span class="count">Up to <b>15</b> · max <b>2 min</b> each · <b><span id="clip-count">0</span></b>/15 used</span>
       </div>
 
@@ -201,11 +208,25 @@
       </div>
 
       <div class="card">
+        <div class="col-title">Soundtrack</div>
+        <div class="audio-row">
+          <span class="audio-name" id="audio-name">No audio added</span>
+          <button class="mini" id="audio-add">Add</button>
+          <button class="mini del" id="audio-del" style="display:none;">Remove</button>
+        </div>
+        <input type="file" id="audio-input" accept=".mp3,.wav,.m4a,.ogg,.oga,.flac,.aac,audio/*" hidden>
+      </div>
+
+      <div class="card">
         <div class="col-title">Settings</div>
 
         <div class="setting">
           <div class="label">Loop forever <small>Restart when the last clip ends</small></div>
           <label class="switch"><input type="checkbox" id="set-loop"><span class="slider"></span></label>
+        </div>
+        <div class="setting">
+          <div class="label">Shuffle clips <small>Play in a random order</small></div>
+          <label class="switch"><input type="checkbox" id="set-shuffle"><span class="slider"></span></label>
         </div>
         <div class="setting">
           <div class="label">Play clip audio <small>Off is recommended</small></div>
@@ -223,16 +244,6 @@
             <option value="never">Never show</option>
           </select>
         </div>
-      </div>
-
-      <div class="card">
-        <div class="col-title">Soundtrack</div>
-        <div class="audio-row">
-          <span class="audio-name" id="audio-name">No audio added</span>
-          <button class="mini" id="audio-add">Add</button>
-          <button class="mini del" id="audio-del" style="display:none;">Remove</button>
-        </div>
-        <input type="file" id="audio-input" accept=".mp3,.wav,.m4a,.ogg,.oga,.flac,.aac,audio/*" hidden>
       </div>
 
       <div class="card">
@@ -291,7 +302,7 @@
     const urls = {};        // clipId -> object URL (video)
     let audioUrl = null;    // object URL (soundtrack)
 
-    const DEFAULTS = { name: '', settings: { loop: true, clipAudio: false, startMuted: true, titlesMode: 'per-clip' }, audio: null, clips: [] };
+    const DEFAULTS = { name: '', settings: { loop: true, shuffle: false, clipAudio: false, startMuted: false, titlesMode: 'per-clip' }, audio: null, clips: [] };
     let loop = DEFAULTS;
 
     const uid = () => 'c' + Math.random().toString(36).slice(2, 9);
@@ -374,10 +385,12 @@
     /* ── Render clip list (with drag reorder) ── */
     function renderClips() {
       $('clip-count').textContent = loop.clips.length;
+      $('order-hint').textContent = loop.settings.shuffle ? 'Shuffle on — random order each play' : 'Plays top to bottom';
       const list = $('clip-list');
       list.innerHTML = '';
+      list.classList.toggle('shuffled', !!loop.settings.shuffle);
       const perClip = loop.settings.titlesMode === 'per-clip';
-      loop.clips.forEach(clip => {
+      loop.clips.forEach((clip, i) => {
         const row = document.createElement('div');
         row.className = 'clip'; row.draggable = true; row.dataset.id = clip.id;
         const inT = clip.in || 0, outT = (clip.out != null ? clip.out : clip.duration);
@@ -388,6 +401,7 @@
           ? `<span class="dur">${fmtClock(inT)}–${fmtClock(outT)} · ${trimmedLen.toFixed(1)}s</span>`
           : `<span class="dur ${over ? 'over' : ''}">${clip.duration ? fmtClock(clip.duration) : '—'}</span>`;
         row.innerHTML =
+          `<span class="clip-num">${i + 1}</span>` +
           `<span class="handle" title="Drag to reorder"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>` +
           (clip.thumb ? `<img class="thumb" src="${clip.thumb}" alt="">` : `<div class="thumb placeholder">no preview</div>`) +
           `<div class="clip-body">` +
@@ -399,7 +413,7 @@
           `</div>` +
           `<div class="clip-actions">` +
             `<button class="trim-btn ${isTrimmed ? 'trimmed' : ''}" data-trim="${clip.id}">${isTrimmed ? 'Trimmed' : 'Trim'}</button>` +
-            `<button class="clip-del" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-1 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6"/></svg></button>` +
+            `<button class="clip-del" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>` +
           `</div>`;
         // wire row controls
         row.querySelector('.clip-title').addEventListener('input', e => { clip.title = e.target.value; save(); if (currentId === clip.id) showName(); });
@@ -442,6 +456,7 @@
     function applySettingsUI() {
       $('proj-name').value = loop.name || '';
       $('set-loop').checked = loop.settings.loop;
+      $('set-shuffle').checked = !!loop.settings.shuffle;
       $('set-clipaudio').checked = loop.settings.clipAudio;
       $('set-startmuted').checked = loop.settings.startMuted;
       $('set-titles').value = loop.settings.titlesMode;
@@ -450,7 +465,8 @@
       else { a.textContent = 'No audio added'; a.classList.remove('set'); $('audio-del').style.display = 'none'; $('audio-add').textContent = 'Add'; }
     }
     $('proj-name').addEventListener('input', e => { loop.name = e.target.value; save(); });
-    $('set-loop').addEventListener('change', e => { loop.settings.loop = e.target.checked; save(); });
+    $('set-loop').addEventListener('change', e => { loop.settings.loop = e.target.checked; save(); refreshPreview(); });
+    $('set-shuffle').addEventListener('change', e => { loop.settings.shuffle = e.target.checked; save(); renderClips(); refreshPreview(); });
     $('set-clipaudio').addEventListener('change', e => { loop.settings.clipAudio = e.target.checked; applyClipAudio(); save(); });
     $('set-startmuted').addEventListener('change', e => { loop.settings.startMuted = e.target.checked; save(); });
     $('set-titles').addEventListener('change', e => { loop.settings.titlesMode = e.target.value; save(); renderClips(); showName(); });
@@ -524,13 +540,14 @@
     function applyClipAudio() { pv.forEach(v => v.muted = !loop.settings.clipAudio); }
 
     let pvAdvancing = false;
+    let pvQueue = [];
     function clipOut(c, vid) { return (c && c.out != null) ? c.out : ((c && c.duration) || (vid && vid.duration) || 0); }
+    function buildQueue() { let arr = playablePreview(); if (loop.settings.shuffle && arr.length > 1) arr = shuffle(arr); pvQueue = arr; }
 
     function pvPlayAt(i) {
-      const arr = playablePreview();
-      if (!arr.length) return;
-      pvIndex = ((i % arr.length) + arr.length) % arr.length;
-      const clip = arr[pvIndex];
+      if (!pvQueue.length) return;
+      pvIndex = ((i % pvQueue.length) + pvQueue.length) % pvQueue.length;
+      const clip = pvQueue[pvIndex];
       currentId = clip.id;
       const n = 1 - pvActive, vid = pv[n];
       vid.muted = !loop.settings.clipAudio;
@@ -540,8 +557,8 @@
           pvAdvancing = false;
           pv[n].classList.add('active'); pv[1 - n].classList.remove('active'); pvActive = n;
           showName();
-          const next = arr[(pvIndex + 1) % arr.length];
-          if (arr.length > 1 && next) { pv[1 - n].src = clipUrl(next); pv[1 - n].load(); }
+          const next = pvQueue[(pvIndex + 1) % pvQueue.length];
+          if (pvQueue.length > 1 && next) { pv[1 - n].src = clipUrl(next); pv[1 - n].load(); }
         }).catch(() => {});
       };
       if (vid.src !== clipUrl(clip)) { vid.onloadeddata = () => { vid.onloadeddata = null; begin(); }; vid.src = clipUrl(clip); vid.load(); }
@@ -550,29 +567,30 @@
 
     function advancePreview() {
       if (pvAdvancing) return;
-      const arr = playablePreview();
-      const last = pvIndex >= arr.length - 1;
-      if (last && !loop.settings.loop) { pv[pvActive].pause(); return; }
-      pvAdvancing = true;
-      pvPlayAt(pvIndex + 1);
+      if (pvIndex >= pvQueue.length - 1) {
+        if (!loop.settings.loop) { pv[pvActive].pause(); return; }  // single play-through
+        if (loop.settings.shuffle) buildQueue();                    // re-shuffle each cycle
+        pvAdvancing = true; pvPlayAt(0); return;
+      }
+      pvAdvancing = true; pvPlayAt(pvIndex + 1);
     }
 
     pv.forEach(v => {
       v.addEventListener('timeupdate', () => {
         if (!v.classList.contains('active')) return;
-        const clip = loop.clips.find(c => c.id === currentId);
-        if (!clip) return;
+        const clip = pvQueue[pvIndex];
+        if (!clip || clip.id !== currentId) return;
         if (v.currentTime >= clipOut(clip, v) - 0.04) advancePreview();
       });
       v.addEventListener('ended', () => { if (v.classList.contains('active')) advancePreview(); });
     });
 
     function refreshPreview() {
-      const arr = playablePreview();
-      $('pv-empty').style.display = arr.length ? 'none' : 'flex';
+      $('pv-empty').style.display = playablePreview().length ? 'none' : 'flex';
       applyClipAudio();
       pvAdvancing = false;
-      if (arr.length) { pvActive = 0; pvPlayAt(0); } else { pv.forEach(v => { v.pause(); v.removeAttribute('src'); }); currentId = null; }
+      buildQueue();
+      if (pvQueue.length) { pvActive = 0; pvPlayAt(0); } else { pv.forEach(v => { v.pause(); v.removeAttribute('src'); }); currentId = null; }
     }
 
     function setupPreviewAudio() {
