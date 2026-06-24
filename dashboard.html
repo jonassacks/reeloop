@@ -85,7 +85,7 @@
 
     /* Preview */
     .preview { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; overflow: hidden; border: 1px solid var(--line); }
-    .pv-layer { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .25s; }
+    .pv-layer { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .12s linear; }
     .pv-layer.active { opacity: 1; }
     .pv-name { position: absolute; bottom: 0.6rem; left: 0.7rem; font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.7); opacity: 0; transition: opacity .4s; pointer-events: none; max-width: calc(100% - 80px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Oswald'; }
     .pv-name.show { opacity: 1; }
@@ -164,8 +164,8 @@
     <a class="brand" href="index.html" title="Back to home"><span class="dot"></span>Reeloop</a>
     <span class="beta-pill" title="No account needed yet — your loop is saved in this browser">Beta · saved locally</span>
     <input class="proj-name" id="proj-name" placeholder="Untitled loop" maxlength="60" autocomplete="off">
-    <span class="save-state" id="save-state">Saved</span>
     <span class="spacer"></span>
+    <span class="save-state" id="save-state">Saved</span>
     <button class="btn btn--solid" id="copy-top">Copy embed</button>
   </div>
 
@@ -203,6 +203,7 @@
           <div class="pv-empty" id="pv-empty">Add clips to preview your loop</div>
           <button class="pv-sound" id="pv-sound" title="Preview sound">
             <svg id="pv-icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+            <svg id="pv-icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
           </button>
         </div>
       </div>
@@ -558,7 +559,13 @@
           pv[n].classList.add('active'); pv[1 - n].classList.remove('active'); pvActive = n;
           showName();
           const next = pvQueue[(pvIndex + 1) % pvQueue.length];
-          if (pvQueue.length > 1 && next) { pv[1 - n].src = clipUrl(next); pv[1 - n].load(); }
+          if (pvQueue.length > 1 && next) {
+            const nb = pv[1 - n];
+            nb.src = clipUrl(next); nb.load();
+            // pre-seek the on-deck clip to its trim in-point so its first frame
+            // is decoded before we swap → no black flash on the cut
+            nb.onloadeddata = () => { nb.onloadeddata = null; try { nb.currentTime = next.in || 0; } catch (e) {} };
+          }
         }).catch(() => {});
       };
       if (vid.src !== clipUrl(clip)) { vid.onloadeddata = () => { vid.onloadeddata = null; begin(); }; vid.src = clipUrl(clip); vid.load(); }
@@ -599,6 +606,7 @@
     $('pv-sound').addEventListener('click', () => {
       soundOn = !soundOn;
       $('pv-icon-off').style.display = soundOn ? 'none' : '';
+      $('pv-icon-on').style.display = soundOn ? '' : 'none';
       // soundtrack
       if (audioUrl) { previewAudio.muted = !soundOn; if (soundOn) { previewAudio.src = previewAudio.src || audioUrl; previewAudio.play().catch(() => {}); } }
       // clip audio follows the same toggle if clip-audio setting is on
@@ -693,8 +701,9 @@
 
     $('trim-apply').addEventListener('click', () => {
       const clip = loop.clips.find(c => c.id === tm.clipId);
-      if (clip) { clip.in = +tm.in.toFixed(2); clip.out = +tm.out.toFixed(2); save(); renderClips(); refreshPreview(); toast('Trim applied'); }
-      closeTrim();
+      if (clip) { clip.in = +tm.in.toFixed(2); clip.out = +tm.out.toFixed(2); }
+      closeTrim();   // close first so nothing downstream can leave the modal open
+      if (clip) { save(); renderClips(); refreshPreview(); toast('Trim applied'); }
     });
     $('trim-cancel').addEventListener('click', closeTrim);
     $('trim-close').addEventListener('click', closeTrim);
