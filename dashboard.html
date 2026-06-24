@@ -118,6 +118,32 @@
     .embed-note { font-size: 0.72rem; color: var(--muted); margin-top: 0.6rem; line-height: 1.5; }
     .embed-note b { color: var(--fg); }
 
+    /* Clip actions + trim button */
+    .clip-actions { display: flex; flex-direction: column; gap: 0.35rem; align-items: flex-end; flex-shrink: 0; }
+    .trim-btn { font-size: 0.72rem; padding: 0.32rem 0.62rem; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--fg); white-space: nowrap; }
+    .trim-btn:hover { border-color: rgba(255,255,255,0.32); }
+    .trim-btn.trimmed { border-color: var(--accent); color: var(--accent); }
+
+    /* Modal */
+    .modal { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); padding: 1.5rem; }
+    .modal.show { display: flex; }
+    .modal-card { width: 100%; max-width: 640px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 1.25rem; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.9rem; }
+    .modal-head span { font-family: 'Oswald'; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .modal-head button { background: transparent; border: none; color: var(--muted); font-size: 1.5rem; line-height: 1; padding: 0 0.3rem; }
+    .modal-head button:hover { color: var(--fg); }
+    .trim-video { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; object-fit: contain; }
+    .trim-time { text-align: center; font-size: 0.74rem; color: var(--muted); margin: 0.55rem 0 0.3rem; font-variant-numeric: tabular-nums; }
+    .trim-track { position: relative; height: 42px; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; margin: 0.3rem 0 0.8rem; cursor: pointer; touch-action: none; }
+    .trim-region { position: absolute; top: 0; bottom: 0; background: rgba(229,72,77,0.18); border-left: 2px solid var(--accent); border-right: 2px solid var(--accent); pointer-events: none; }
+    .trim-handle { position: absolute; top: -3px; bottom: -3px; width: 14px; margin-left: -7px; background: var(--accent); border-radius: 4px; cursor: ew-resize; display: flex; align-items: center; justify-content: center; touch-action: none; }
+    .trim-handle::after { content: ''; width: 2px; height: 16px; background: rgba(255,255,255,0.85); border-radius: 2px; }
+    .trim-playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; pointer-events: none; }
+    .trim-readout { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.9rem; }
+    .trim-readout b { color: var(--fg); font-variant-numeric: tabular-nums; }
+    .trim-controls { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
+    .modal-foot { display: flex; justify-content: flex-end; gap: 0.6rem; }
+
     /* Toast */
     #toast { position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--bg-3); border: 1px solid var(--line); color: var(--fg); padding: 0.7rem 1.1rem; border-radius: 9px; font-size: 0.85rem; opacity: 0; transition: opacity .25s, transform .25s; z-index: 100; pointer-events: none; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -145,13 +171,13 @@
     <div class="editor">
       <div class="clips-head">
         <span class="col-title" style="margin:0;">Clips</span>
-        <span class="count">Up to <b>15</b> · max <b>10s</b> each · <b><span id="clip-count">0</span></b>/15 used</span>
+        <span class="count">Up to <b>15</b> · max <b>2 min</b> each · <b><span id="clip-count">0</span></b>/15 used</span>
       </div>
 
       <div class="dropzone" id="dropzone">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         <div>Drag clips here or <b>click to choose</b></div>
-        <div class="hint">MP4, MOV, WebM · up to 10 seconds each</div>
+        <div class="hint">MP4, MOV, WebM · up to 2 minutes each · trim after adding</div>
       </div>
 
       <div class="clip-list" id="clip-list"></div>
@@ -221,13 +247,42 @@
     </div>
   </div>
 
+  <!-- Trim modal -->
+  <div class="modal" id="trim-modal">
+    <div class="modal-card">
+      <div class="modal-head"><span id="trim-title">Trim clip</span><button id="trim-close" title="Close">&times;</button></div>
+      <video id="trim-video" class="trim-video" playsinline></video>
+      <div class="trim-time"><span id="trim-cur">0:00.0</span> / <span id="trim-dur">0:00.0</span></div>
+      <div class="trim-track" id="trim-track">
+        <div class="trim-region" id="trim-region"></div>
+        <div class="trim-handle" id="trim-in"></div>
+        <div class="trim-handle" id="trim-out"></div>
+        <div class="trim-playhead" id="trim-playhead"></div>
+      </div>
+      <div class="trim-readout">
+        <span>In <b id="trim-in-t">0:00.0</b></span>
+        <span>Out <b id="trim-out-t">0:00.0</b></span>
+        <span>Length <b id="trim-len">0.0s</b></span>
+      </div>
+      <div class="trim-controls">
+        <button id="trim-play" class="mini">Play</button>
+        <button id="trim-setin" class="mini">Set in at playhead</button>
+        <button id="trim-setout" class="mini">Set out at playhead</button>
+      </div>
+      <div class="modal-foot">
+        <button id="trim-cancel" class="btn btn--ghost">Cancel</button>
+        <button id="trim-apply" class="btn btn--solid">Apply trim</button>
+      </div>
+    </div>
+  </div>
+
   <!-- offscreen video/canvas for metadata + thumbnail extraction -->
   <video id="probe" muted playsinline preload="metadata" style="position:fixed;left:-9999px;width:2px;height:2px;"></video>
   <canvas id="probe-canvas" style="display:none;"></canvas>
   <div id="toast"></div>
 
   <script>
-    const MAX_CLIPS = 15, MAX_SECONDS = 10;
+    const MAX_CLIPS = 15, MAX_SECONDS = 120;
     const VIDEO_RE  = /\.(mp4|mov|webm|m4v|ogv)$/i;
     const STORE_KEY = 'reeloop_loop_v1';
     const EMBED_BASE = 'https://reeloop.app/e';   // placeholder until backend/publish
@@ -241,6 +296,8 @@
 
     const uid = () => 'c' + Math.random().toString(36).slice(2, 9);
     const slugify = s => (s || 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'untitled';
+    const fmtClock = s => { s = Math.max(0, s || 0); const m = Math.floor(s / 60); const r = s - m * 60; return m + ':' + (r < 10 ? '0' : '') + r.toFixed(1); };
+    const fmtTime  = s => { s = Math.round(s || 0); const m = Math.floor(s / 60), r = s % 60; return m > 0 ? `${m}:${r < 10 ? '0' : ''}${r}` : `${r}s`; };
 
     function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2600); }
     function flashSaved() { const s = $('save-state'); s.textContent = 'Saved'; s.classList.add('flash'); clearTimeout(s._t); s._t = setTimeout(() => s.classList.remove('flash'), 800); }
@@ -294,14 +351,14 @@
         let info;
         try { info = await processFile(file); }
         catch (e) { toast(`Couldn't read "${file.name}".`); continue; }
-        if (info.duration > MAX_SECONDS + 0.25) {
-          toast(`"${file.name}" is ${info.duration.toFixed(1)}s — max ${MAX_SECONDS}s.`);
+        if (info.duration > MAX_SECONDS + 0.5) {
+          toast(`"${file.name}" is ${fmtTime(info.duration)} — max ${fmtTime(MAX_SECONDS)}.`);
           URL.revokeObjectURL(info.url); continue;
         }
         const id = uid();
         urls[id] = info.url;
         await idbPut(id, file);
-        loop.clips.push({ id, file: file.name, title: defaultTitle(file.name), showTitle: true, duration: info.duration, thumb: info.thumb });
+        loop.clips.push({ id, file: file.name, title: defaultTitle(file.name), showTitle: true, duration: info.duration, in: 0, out: info.duration, thumb: info.thumb });
       }
       save(); renderClips(); refreshPreview();
     }
@@ -323,22 +380,32 @@
       loop.clips.forEach(clip => {
         const row = document.createElement('div');
         row.className = 'clip'; row.draggable = true; row.dataset.id = clip.id;
-        const over = clip.duration > MAX_SECONDS + 0.25;
+        const inT = clip.in || 0, outT = (clip.out != null ? clip.out : clip.duration);
+        const trimmedLen = Math.max(0, outT - inT);
+        const isTrimmed = inT > 0.05 || outT < clip.duration - 0.05;
+        const over = clip.duration > MAX_SECONDS + 0.5;
+        const durHtml = isTrimmed
+          ? `<span class="dur">${fmtClock(inT)}–${fmtClock(outT)} · ${trimmedLen.toFixed(1)}s</span>`
+          : `<span class="dur ${over ? 'over' : ''}">${clip.duration ? fmtClock(clip.duration) : '—'}</span>`;
         row.innerHTML =
           `<span class="handle" title="Drag to reorder"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>` +
           (clip.thumb ? `<img class="thumb" src="${clip.thumb}" alt="">` : `<div class="thumb placeholder">no preview</div>`) +
           `<div class="clip-body">` +
             `<input class="clip-title" value="${escapeAttr(clip.title)}" placeholder="Clip title" maxlength="60">` +
             `<div class="clip-meta">` +
-              `<span class="dur ${over ? 'over' : ''}">${clip.duration ? clip.duration.toFixed(1) + 's' : '—'}</span>` +
+              durHtml +
               (perClip ? `<label class="per-title"><input type="checkbox" ${clip.showTitle ? 'checked' : ''}> show title</label>` : ``) +
             `</div>` +
           `</div>` +
-          `<button class="clip-del" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-1 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6"/></svg></button>`;
+          `<div class="clip-actions">` +
+            `<button class="trim-btn ${isTrimmed ? 'trimmed' : ''}" data-trim="${clip.id}">${isTrimmed ? 'Trimmed' : 'Trim'}</button>` +
+            `<button class="clip-del" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-1 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6"/></svg></button>` +
+          `</div>`;
         // wire row controls
         row.querySelector('.clip-title').addEventListener('input', e => { clip.title = e.target.value; save(); if (currentId === clip.id) showName(); });
         const cb = row.querySelector('.per-title input');
         if (cb) cb.addEventListener('change', e => { clip.showTitle = e.target.checked; save(); });
+        row.querySelector('[data-trim]').addEventListener('click', () => openTrim(clip.id));
         row.querySelector('.clip-del').addEventListener('click', () => removeClip(clip.id));
         wireDrag(row);
         list.appendChild(row);
@@ -456,6 +523,9 @@
 
     function applyClipAudio() { pv.forEach(v => v.muted = !loop.settings.clipAudio); }
 
+    let pvAdvancing = false;
+    function clipOut(c, vid) { return (c && c.out != null) ? c.out : ((c && c.duration) || (vid && vid.duration) || 0); }
+
     function pvPlayAt(i) {
       const arr = playablePreview();
       if (!arr.length) return;
@@ -464,27 +534,44 @@
       currentId = clip.id;
       const n = 1 - pvActive, vid = pv[n];
       vid.muted = !loop.settings.clipAudio;
-      if (vid.src !== clipUrl(clip)) vid.src = clipUrl(clip);
-      vid.play().then(() => {
-        pv[n].classList.add('active'); pv[1 - n].classList.remove('active'); pvActive = n;
-        showName();
-        // preload next
-        const next = arr[(pvIndex + 1) % arr.length];
-        if (arr.length > 1 && next) { pv[1 - n].src = clipUrl(next); pv[1 - n].load(); }
-      }).catch(() => {});
+      const begin = () => {
+        try { vid.currentTime = clip.in || 0; } catch (e) {}
+        vid.play().then(() => {
+          pvAdvancing = false;
+          pv[n].classList.add('active'); pv[1 - n].classList.remove('active'); pvActive = n;
+          showName();
+          const next = arr[(pvIndex + 1) % arr.length];
+          if (arr.length > 1 && next) { pv[1 - n].src = clipUrl(next); pv[1 - n].load(); }
+        }).catch(() => {});
+      };
+      if (vid.src !== clipUrl(clip)) { vid.onloadeddata = () => { vid.onloadeddata = null; begin(); }; vid.src = clipUrl(clip); vid.load(); }
+      else begin();
     }
-    pv.forEach(v => v.addEventListener('ended', () => {
-      if (!v.classList.contains('active')) return;
+
+    function advancePreview() {
+      if (pvAdvancing) return;
       const arr = playablePreview();
       const last = pvIndex >= arr.length - 1;
-      if (last && !loop.settings.loop) return;  // stop at end when not looping
+      if (last && !loop.settings.loop) { pv[pvActive].pause(); return; }
+      pvAdvancing = true;
       pvPlayAt(pvIndex + 1);
-    }));
+    }
+
+    pv.forEach(v => {
+      v.addEventListener('timeupdate', () => {
+        if (!v.classList.contains('active')) return;
+        const clip = loop.clips.find(c => c.id === currentId);
+        if (!clip) return;
+        if (v.currentTime >= clipOut(clip, v) - 0.04) advancePreview();
+      });
+      v.addEventListener('ended', () => { if (v.classList.contains('active')) advancePreview(); });
+    });
 
     function refreshPreview() {
       const arr = playablePreview();
       $('pv-empty').style.display = arr.length ? 'none' : 'flex';
       applyClipAudio();
+      pvAdvancing = false;
       if (arr.length) { pvActive = 0; pvPlayAt(0); } else { pv.forEach(v => { v.pause(); v.removeAttribute('src'); }); currentId = null; }
     }
 
@@ -499,6 +586,102 @@
       // clip audio follows the same toggle if clip-audio setting is on
       if (loop.settings.clipAudio) pv.forEach(v => v.muted = !soundOn);
     });
+
+    /* ── Trim modal (in/out points — metadata only, no re-encode here) ── */
+    const tm = { clipId: null, dur: 0, in: 0, out: 0, dragging: null };
+    const tmEl = {
+      modal: $('trim-modal'), video: $('trim-video'), track: $('trim-track'), region: $('trim-region'),
+      hIn: $('trim-in'), hOut: $('trim-out'), playhead: $('trim-playhead'),
+      cur: $('trim-cur'), durLbl: $('trim-dur'), inT: $('trim-in-t'), outT: $('trim-out-t'), len: $('trim-len'),
+      play: $('trim-play'), title: $('trim-title')
+    };
+    let tmPlaying = false;
+
+    function tmPaint() {
+      const pIn = tm.dur ? (tm.in / tm.dur) * 100 : 0;
+      const pOut = tm.dur ? (tm.out / tm.dur) * 100 : 100;
+      tmEl.hIn.style.left = pIn + '%';
+      tmEl.hOut.style.left = pOut + '%';
+      tmEl.region.style.left = pIn + '%';
+      tmEl.region.style.width = (pOut - pIn) + '%';
+      tmEl.inT.textContent = fmtClock(tm.in);
+      tmEl.outT.textContent = fmtClock(tm.out);
+      tmEl.len.textContent = Math.max(0, tm.out - tm.in).toFixed(1) + 's';
+      tmEl.durLbl.textContent = fmtClock(tm.dur);
+    }
+    function tmPlayheadAt(t) { tmEl.playhead.style.left = (tm.dur ? (t / tm.dur) * 100 : 0) + '%'; tmEl.cur.textContent = fmtClock(t); }
+    function pxToTime(clientX) { const r = tmEl.track.getBoundingClientRect(); const pct = Math.min(1, Math.max(0, (clientX - r.left) / r.width)); return pct * tm.dur; }
+
+    function openTrim(clipId) {
+      const clip = loop.clips.find(c => c.id === clipId);
+      if (!clip || !urls[clipId]) { toast('Clip is still loading.'); return; }
+      tm.clipId = clipId;
+      tmEl.title.textContent = 'Trim — ' + (clip.title || 'clip');
+      tmEl.video.muted = true; tmEl.video.src = urls[clipId];
+      const setup = () => {
+        tm.dur = tmEl.video.duration || clip.duration || 0;
+        tm.in = Math.min(clip.in || 0, tm.dur);
+        tm.out = Math.min(clip.out != null ? clip.out : tm.dur, tm.dur);
+        if (tm.out <= tm.in) tm.out = tm.dur;
+        tmPaint(); tmPlayheadAt(tm.in);
+        try { tmEl.video.currentTime = tm.in; } catch (e) {}
+      };
+      if (tmEl.video.readyState >= 1) setup();
+      else { tmEl.video.onloadedmetadata = () => { tmEl.video.onloadedmetadata = null; setup(); }; }
+      tmEl.modal.classList.add('show');
+    }
+    function closeTrim() { tmEl.video.pause(); tmEl.video.removeAttribute('src'); tmEl.modal.classList.remove('show'); }
+
+    function startHandleDrag(which) { return e => { tm.dragging = which; e.target.setPointerCapture(e.pointerId); e.preventDefault(); }; }
+    function onHandleMove(e) {
+      if (!tm.dragging) return;
+      const t = pxToTime(e.clientX);
+      if (tm.dragging === 'in') tm.in = Math.max(0, Math.min(t, tm.out - 0.1));
+      else tm.out = Math.min(tm.dur, Math.max(t, tm.in + 0.1));
+      tmPaint();
+      const seekTo = tm.dragging === 'in' ? tm.in : tm.out;
+      try { tmEl.video.currentTime = seekTo; } catch (e2) {}
+      tmPlayheadAt(seekTo);
+    }
+    const endHandleDrag = () => { tm.dragging = null; };
+    tmEl.hIn.addEventListener('pointerdown', startHandleDrag('in'));
+    tmEl.hOut.addEventListener('pointerdown', startHandleDrag('out'));
+    tmEl.hIn.addEventListener('pointermove', onHandleMove);
+    tmEl.hOut.addEventListener('pointermove', onHandleMove);
+    tmEl.hIn.addEventListener('pointerup', endHandleDrag);
+    tmEl.hOut.addEventListener('pointerup', endHandleDrag);
+
+    tmEl.track.addEventListener('click', e => {
+      if (e.target === tmEl.hIn || e.target === tmEl.hOut) return;
+      const t = pxToTime(e.clientX);
+      try { tmEl.video.currentTime = t; } catch (e2) {}
+      tmPlayheadAt(t);
+    });
+
+    tmEl.play.addEventListener('click', () => {
+      if (tmPlaying) { tmEl.video.pause(); return; }
+      if (tmEl.video.currentTime < tm.in || tmEl.video.currentTime >= tm.out - 0.02) { try { tmEl.video.currentTime = tm.in; } catch (e) {} }
+      tmEl.video.play().catch(() => {});
+    });
+    tmEl.video.addEventListener('play', () => { tmPlaying = true; tmEl.play.textContent = 'Pause'; });
+    tmEl.video.addEventListener('pause', () => { tmPlaying = false; tmEl.play.textContent = 'Play'; });
+    tmEl.video.addEventListener('timeupdate', () => {
+      tmPlayheadAt(tmEl.video.currentTime);
+      if (tmEl.video.currentTime >= tm.out - 0.03) { try { tmEl.video.currentTime = tm.in; } catch (e) {} }
+    });
+
+    $('trim-setin').addEventListener('click', () => { tm.in = Math.max(0, Math.min(tmEl.video.currentTime, tm.out - 0.1)); tmPaint(); });
+    $('trim-setout').addEventListener('click', () => { tm.out = Math.min(tm.dur, Math.max(tmEl.video.currentTime, tm.in + 0.1)); tmPaint(); });
+
+    $('trim-apply').addEventListener('click', () => {
+      const clip = loop.clips.find(c => c.id === tm.clipId);
+      if (clip) { clip.in = +tm.in.toFixed(2); clip.out = +tm.out.toFixed(2); save(); renderClips(); refreshPreview(); toast('Trim applied'); }
+      closeTrim();
+    });
+    $('trim-cancel').addEventListener('click', closeTrim);
+    $('trim-close').addEventListener('click', closeTrim);
+    tmEl.modal.addEventListener('click', e => { if (e.target === tmEl.modal) closeTrim(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && tmEl.modal.classList.contains('show')) closeTrim(); });
 
     /* ── Init ── */
     async function init() {
@@ -515,7 +698,7 @@
         const names = ['Cabin_anna_clip_00090975.mov','Cabin_anna_clip_00091625.mov','Cabin_anna_clip_00092475.mov','Cabin_anna_clip_00092675.mov','Cabin_anna_clip_00093125.mov'];
         for (let i = 0; i < Math.min(n, names.length); i++) {
           const id = uid(); urls[id] = base + names[i];
-          loop.clips.push({ id, file: names[i], title: defaultTitle(names[i]), showTitle: true, duration: 1.5, thumb: '' });
+          loop.clips.push({ id, file: names[i], title: defaultTitle(names[i]), showTitle: true, duration: 1.5, in: 0, out: 1.5, thumb: '' });
         }
         renderClips(); renderEmbed(); refreshPreview();
         return loop.clips.length;
