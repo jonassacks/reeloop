@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reeloop — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23E5484D'/><circle cx='16' cy='16' r='7' fill='none' stroke='white' stroke-width='2.5'/><circle cx='16' cy='16' r='1.6' fill='white'/></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0b; --bg-2: #141417; --bg-3: #1c1c21;
+      --fg: #f4f4f2; --muted: rgba(255,255,255,0.5); --faint: rgba(255,255,255,0.1);
+      --line: rgba(255,255,255,0.13); --accent: #E5484D; --good: #3ECf8e;
+    }
+    body { background: var(--bg); color: var(--fg); font-family: 'Inter', -apple-system, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    h1,h2,h3 { font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: 0.01em; }
+    button { font-family: inherit; cursor: pointer; }
+    input, select { font-family: inherit; color: var(--fg); }
+
+    /* Topbar */
+    .topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 1rem; height: 60px; padding: 0 1.25rem; background: rgba(10,10,11,0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 0.5rem; font-family: 'Oswald'; font-weight: 700; font-size: 1.1rem; text-transform: uppercase; }
+    .brand .dot { width: 20px; height: 20px; border: 2.5px solid var(--accent); border-radius: 50%; position: relative; }
+    .brand .dot::after { content:''; position: absolute; inset: 0; margin: auto; width: 3.5px; height: 3.5px; background: var(--accent); border-radius: 50%; }
+    .proj-name { flex: 1; max-width: 360px; background: transparent; border: 1px solid transparent; border-radius: 7px; padding: 0.45rem 0.7rem; font-size: 0.95rem; font-weight: 500; }
+    .proj-name:hover { border-color: var(--faint); }
+    .proj-name:focus { outline: none; border-color: var(--accent); background: var(--bg-2); }
+    .save-state { font-size: 0.75rem; color: var(--muted); min-width: 54px; }
+    .save-state.flash { color: var(--good); }
+    .spacer { flex: 1; }
+    .btn { font-size: 0.88rem; font-weight: 600; padding: 0.55rem 1.05rem; border-radius: 8px; border: 1px solid transparent; transition: transform .1s, background .15s, border-color .15s; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn--solid { background: var(--accent); color: #fff; border: none; }
+    .btn--solid:hover { background: #d23a3f; }
+    .btn--ghost { background: transparent; color: var(--fg); border-color: var(--line); }
+    .btn--ghost:hover { border-color: rgba(255,255,255,0.32); }
+
+    /* Layout */
+    .layout { display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; max-width: 1240px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; align-items: start; }
+    .col-title { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.85rem; font-family: 'Oswald'; }
+
+    /* Clips */
+    .clips-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem; }
+    .count { font-size: 0.8rem; color: var(--muted); }
+    .count b { color: var(--fg); }
+    .dropzone { border: 1.5px dashed var(--line); border-radius: 12px; padding: 2rem; text-align: center; color: var(--muted); transition: border-color .15s, background .15s; cursor: pointer; }
+    .dropzone:hover, .dropzone.over { border-color: var(--accent); background: rgba(229,72,77,0.05); color: var(--fg); }
+    .dropzone svg { width: 26px; height: 26px; margin-bottom: 0.5rem; opacity: 0.7; }
+    .dropzone .hint { font-size: 0.78rem; margin-top: 0.35rem; opacity: 0.7; }
+
+    .clip-list { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1rem; }
+    .clip { display: flex; align-items: center; gap: 0.85rem; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem; transition: box-shadow .15s, opacity .15s; }
+    .clip.dragging { opacity: 0.5; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+    .handle { cursor: grab; color: var(--muted); padding: 0 0.15rem; flex-shrink: 0; }
+    .handle:active { cursor: grabbing; }
+    .handle svg { width: 16px; height: 16px; display: block; }
+    .thumb { width: 96px; height: 54px; border-radius: 6px; object-fit: cover; background: #000; flex-shrink: 0; border: 1px solid var(--line); }
+    .thumb.placeholder { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.65rem; }
+    .clip-body { flex: 1; min-width: 0; }
+    .clip-title { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 0.3rem 0.45rem; font-size: 0.9rem; font-weight: 500; }
+    .clip-title:hover { border-color: var(--faint); }
+    .clip-title:focus { outline: none; border-color: var(--accent); background: var(--bg-3); }
+    .clip-meta { display: flex; align-items: center; gap: 0.7rem; margin-top: 0.3rem; padding-left: 0.45rem; }
+    .dur { font-size: 0.72rem; color: var(--muted); }
+    .dur.over { color: var(--accent); }
+    .per-title { display: flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; color: var(--muted); cursor: pointer; user-select: none; }
+    .per-title input { accent-color: var(--accent); }
+    .clip-del { background: transparent; border: none; color: var(--muted); padding: 0.3rem; border-radius: 6px; flex-shrink: 0; }
+    .clip-del:hover { color: var(--accent); background: rgba(229,72,77,0.1); }
+    .clip-del svg { width: 16px; height: 16px; display: block; }
+
+    /* Panel (right) */
+    .panel { display: flex; flex-direction: column; gap: 1.25rem; position: sticky; top: 76px; }
+    .card { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem; }
+
+    /* Preview */
+    .preview { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 9px; overflow: hidden; border: 1px solid var(--line); }
+    .pv-layer { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .25s; }
+    .pv-layer.active { opacity: 1; }
+    .pv-name { position: absolute; bottom: 0.6rem; left: 0.7rem; font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.7); opacity: 0; transition: opacity .4s; pointer-events: none; max-width: calc(100% - 80px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Oswald'; }
+    .pv-name.show { opacity: 1; }
+    .pv-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.78rem; text-align: center; padding: 1rem; }
+    .pv-sound { position: absolute; bottom: 0.55rem; right: 0.6rem; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; }
+    .pv-sound:hover { color: #fff; border-color: rgba(255,255,255,0.6); }
+    .pv-sound svg { width: 13px; height: 13px; }
+
+    /* Settings */
+    .setting { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.6rem 0; border-bottom: 1px solid var(--faint); }
+    .setting:last-child { border-bottom: none; }
+    .setting .label { font-size: 0.88rem; }
+    .setting .label small { display: block; color: var(--muted); font-size: 0.72rem; margin-top: 0.1rem; }
+    .switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; background: var(--bg-3); border: 1px solid var(--line); border-radius: 999px; transition: .2s; }
+    .slider::before { content:''; position: absolute; height: 16px; width: 16px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: .2s; }
+    .switch input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+    .switch input:checked + .slider::before { transform: translateX(16px); }
+    select.sel { background: var(--bg-3); border: 1px solid var(--line); border-radius: 7px; padding: 0.4rem 0.6rem; font-size: 0.82rem; }
+
+    /* Audio row */
+    .audio-row { display: flex; align-items: center; gap: 0.7rem; }
+    .audio-name { flex: 1; min-width: 0; font-size: 0.82rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .audio-name.set { color: var(--fg); }
+    .mini { font-size: 0.76rem; padding: 0.4rem 0.7rem; border-radius: 7px; border: 1px solid var(--line); background: transparent; color: var(--fg); }
+    .mini:hover { border-color: rgba(255,255,255,0.32); }
+    .mini.del { color: var(--muted); }
+    .mini.del:hover { color: var(--accent); border-color: rgba(229,72,77,0.4); }
+
+    /* Embed */
+    .embed-box { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 0.7rem; font-family: 'SF Mono','Fira Mono',monospace; font-size: 0.74rem; color: var(--muted); white-space: pre-wrap; word-break: break-all; line-height: 1.5; max-height: 130px; overflow: auto; }
+    .embed-actions { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.7rem; }
+    .embed-note { font-size: 0.72rem; color: var(--muted); margin-top: 0.6rem; line-height: 1.5; }
+    .embed-note b { color: var(--fg); }
+
+    /* Toast */
+    #toast { position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--bg-3); border: 1px solid var(--line); color: var(--fg); padding: 0.7rem 1.1rem; border-radius: 9px; font-size: 0.85rem; opacity: 0; transition: opacity .25s, transform .25s; z-index: 100; pointer-events: none; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+      .panel { position: static; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <span class="brand"><span class="dot"></span>Reeloop</span>
+    <input class="proj-name" id="proj-name" placeholder="Untitled loop" maxlength="60">
+    <span class="save-state" id="save-state">Saved</span>
+    <span class="spacer"></span>
+    <button class="btn btn--solid" id="copy-top">Copy embed</button>
+  </div>
+
+  <div class="layout">
+
+    <!-- LEFT: clips -->
+    <div class="editor">
+      <div class="clips-head">
+        <span class="col-title" style="margin:0;">Clips</span>
+        <span class="count">Up to <b>15</b> · max <b>10s</b> each · <b><span id="clip-count">0</span></b>/15 used</span>
+      </div>
+
+      <div class="dropzone" id="dropzone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div>Drag clips here or <b>click to choose</b></div>
+        <div class="hint">MP4, MOV, WebM · up to 10 seconds each</div>
+      </div>
+
+      <div class="clip-list" id="clip-list"></div>
+      <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm,.m4v,.ogv" multiple hidden>
+    </div>
+
+    <!-- RIGHT: preview + settings + embed -->
+    <div class="panel">
+
+      <div class="card">
+        <div class="col-title">Preview</div>
+        <div class="preview" id="preview">
+          <video id="pv0" class="pv-layer active" playsinline preload="auto" muted></video>
+          <video id="pv1" class="pv-layer" playsinline preload="auto" muted></video>
+          <div class="pv-name" id="pv-name"></div>
+          <div class="pv-empty" id="pv-empty">Add clips to preview your loop</div>
+          <button class="pv-sound" id="pv-sound" title="Preview sound">
+            <svg id="pv-icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="col-title">Settings</div>
+
+        <div class="setting">
+          <div class="label">Loop forever <small>Restart when the last clip ends</small></div>
+          <label class="switch"><input type="checkbox" id="set-loop"><span class="slider"></span></label>
+        </div>
+        <div class="setting">
+          <div class="label">Play clip audio <small>Off is recommended</small></div>
+          <label class="switch"><input type="checkbox" id="set-clipaudio"><span class="slider"></span></label>
+        </div>
+        <div class="setting">
+          <div class="label">Start muted <small>Visitor taps to enable sound</small></div>
+          <label class="switch"><input type="checkbox" id="set-startmuted"><span class="slider"></span></label>
+        </div>
+        <div class="setting">
+          <div class="label">Clip titles <small>Show titles while playing</small></div>
+          <select class="sel" id="set-titles">
+            <option value="per-clip">Per clip</option>
+            <option value="always">Always show</option>
+            <option value="never">Never show</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="col-title">Soundtrack</div>
+        <div class="audio-row">
+          <span class="audio-name" id="audio-name">No audio added</span>
+          <button class="mini" id="audio-add">Add</button>
+          <button class="mini del" id="audio-del" style="display:none;">Remove</button>
+        </div>
+        <input type="file" id="audio-input" accept=".mp3,.wav,.m4a,.ogg,.oga,.flac,.aac,audio/*" hidden>
+      </div>
+
+      <div class="card">
+        <div class="col-title">Embed code</div>
+        <div class="embed-box" id="embed-box"></div>
+        <div class="embed-actions">
+          <button class="btn btn--solid" id="copy-embed">Copy code</button>
+        </div>
+        <div class="embed-note" id="embed-note"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- offscreen video/canvas for metadata + thumbnail extraction -->
+  <video id="probe" muted playsinline preload="metadata" style="position:fixed;left:-9999px;width:2px;height:2px;"></video>
+  <canvas id="probe-canvas" style="display:none;"></canvas>
+  <div id="toast"></div>
+
+  <script>
+    const MAX_CLIPS = 15, MAX_SECONDS = 10;
+    const VIDEO_RE  = /\.(mp4|mov|webm|m4v|ogv)$/i;
+    const STORE_KEY = 'reeloop_loop_v1';
+    const EMBED_BASE = 'https://reeloop.app/e';   // placeholder until backend/publish
+
+    const $ = id => document.getElementById(id);
+    const urls = {};        // clipId -> object URL (video)
+    let audioUrl = null;    // object URL (soundtrack)
+
+    const DEFAULTS = { name: '', settings: { loop: true, clipAudio: false, startMuted: true, titlesMode: 'per-clip' }, audio: null, clips: [] };
+    let loop = DEFAULTS;
+
+    const uid = () => 'c' + Math.random().toString(36).slice(2, 9);
+    const slugify = s => (s || 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'untitled';
+
+    function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2600); }
+    function flashSaved() { const s = $('save-state'); s.textContent = 'Saved'; s.classList.add('flash'); clearTimeout(s._t); s._t = setTimeout(() => s.classList.remove('flash'), 800); }
+
+    /* ── Persistence: metadata in localStorage, blobs in IndexedDB ── */
+    function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(loop)); flashSaved(); } catch (e) {} renderEmbed(); }
+    function loadMeta() { try { const r = localStorage.getItem(STORE_KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
+
+    function idb() { return new Promise((res, rej) => { const r = indexedDB.open('reeloop', 1); r.onupgradeneeded = () => r.result.createObjectStore('media'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+    async function idbPut(key, blob) { try { const db = await idb(); await new Promise((res, rej) => { const tx = db.transaction('media', 'readwrite'); tx.objectStore('media').put(blob, key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) {} }
+    async function idbGet(key) { try { const db = await idb(); return await new Promise((res) => { const tx = db.transaction('media', 'readonly'); const q = tx.objectStore('media').get(key); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }); } catch (e) { return null; } }
+    async function idbDel(key) { try { const db = await idb(); await new Promise((res) => { const tx = db.transaction('media', 'readwrite'); tx.objectStore('media').delete(key); tx.oncomplete = res; tx.onerror = res; }); } catch (e) {} }
+
+    /* ── Read duration + grab a thumbnail frame from a File ── */
+    function processFile(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const v = document.createElement('video');
+        v.muted = true; v.preload = 'metadata'; v.playsInline = true; v.src = url;
+        let done = false;
+        const fail = () => { if (!done) { done = true; reject(new Error('unreadable')); } };
+        v.addEventListener('error', fail);
+        v.addEventListener('loadedmetadata', () => {
+          const dur = v.duration || 0;
+          const t = Math.min(Math.max(dur * 0.25, 0.05), Math.max(dur - 0.05, 0.05));
+          const onSeek = () => {
+            if (done) return; done = true;
+            let thumb = '';
+            try {
+              const c = $('probe-canvas');
+              const w = 320, h = Math.round(w * ((v.videoHeight && v.videoWidth) ? v.videoHeight / v.videoWidth : 0.5625));
+              c.width = w; c.height = h;
+              c.getContext('2d').drawImage(v, 0, 0, w, h);
+              thumb = c.toDataURL('image/jpeg', 0.72);
+            } catch (e) { thumb = ''; }   // tainted (cross-origin) or unsupported → placeholder
+            resolve({ duration: dur, thumb, url });
+          };
+          v.addEventListener('seeked', onSeek, { once: true });
+          try { v.currentTime = t; } catch (e) { onSeek(); }
+        });
+        setTimeout(fail, 8000);
+      });
+    }
+
+    /* ── Add clips ── */
+    async function handleFiles(fileList) {
+      const files = [...fileList].filter(f => (f.type && f.type.startsWith('video/')) || VIDEO_RE.test(f.name));
+      if (!files.length) { toast('No video files found.'); return; }
+      for (const file of files) {
+        if (loop.clips.length >= MAX_CLIPS) { toast(`Maximum ${MAX_CLIPS} clips reached.`); break; }
+        let info;
+        try { info = await processFile(file); }
+        catch (e) { toast(`Couldn't read "${file.name}".`); continue; }
+        if (info.duration > MAX_SECONDS + 0.25) {
+          toast(`"${file.name}" is ${info.duration.toFixed(1)}s — max ${MAX_SECONDS}s.`);
+          URL.revokeObjectURL(info.url); continue;
+        }
+        const id = uid();
+        urls[id] = info.url;
+        await idbPut(id, file);
+        loop.clips.push({ id, file: file.name, title: defaultTitle(file.name), showTitle: true, duration: info.duration, thumb: info.thumb });
+      }
+      save(); renderClips(); refreshPreview();
+    }
+    function defaultTitle(name) { return name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, c => c.toUpperCase()).slice(0, 60); }
+
+    async function removeClip(id) {
+      loop.clips = loop.clips.filter(c => c.id !== id);
+      if (urls[id]) { URL.revokeObjectURL(urls[id]); delete urls[id]; }
+      await idbDel(id);
+      save(); renderClips(); refreshPreview();
+    }
+
+    /* ── Render clip list (with drag reorder) ── */
+    function renderClips() {
+      $('clip-count').textContent = loop.clips.length;
+      const list = $('clip-list');
+      list.innerHTML = '';
+      const perClip = loop.settings.titlesMode === 'per-clip';
+      loop.clips.forEach(clip => {
+        const row = document.createElement('div');
+        row.className = 'clip'; row.draggable = true; row.dataset.id = clip.id;
+        const over = clip.duration > MAX_SECONDS + 0.25;
+        row.innerHTML =
+          `<span class="handle" title="Drag to reorder"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>` +
+          (clip.thumb ? `<img class="thumb" src="${clip.thumb}" alt="">` : `<div class="thumb placeholder">no preview</div>`) +
+          `<div class="clip-body">` +
+            `<input class="clip-title" value="${escapeAttr(clip.title)}" placeholder="Clip title" maxlength="60">` +
+            `<div class="clip-meta">` +
+              `<span class="dur ${over ? 'over' : ''}">${clip.duration ? clip.duration.toFixed(1) + 's' : '—'}</span>` +
+              (perClip ? `<label class="per-title"><input type="checkbox" ${clip.showTitle ? 'checked' : ''}> show title</label>` : ``) +
+            `</div>` +
+          `</div>` +
+          `<button class="clip-del" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-1 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6"/></svg></button>`;
+        // wire row controls
+        row.querySelector('.clip-title').addEventListener('input', e => { clip.title = e.target.value; save(); if (currentId === clip.id) showName(); });
+        const cb = row.querySelector('.per-title input');
+        if (cb) cb.addEventListener('change', e => { clip.showTitle = e.target.checked; save(); });
+        row.querySelector('.clip-del').addEventListener('click', () => removeClip(clip.id));
+        wireDrag(row);
+        list.appendChild(row);
+      });
+      $('dropzone').style.display = loop.clips.length >= MAX_CLIPS ? 'none' : '';
+    }
+    function escapeAttr(s) { return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+    /* ── Drag-to-reorder ── */
+    let dragId = null;
+    function wireDrag(row) {
+      row.addEventListener('dragstart', () => { dragId = row.dataset.id; row.classList.add('dragging'); });
+      row.addEventListener('dragend', () => {
+        row.classList.remove('dragging'); dragId = null;
+        const order = [...$('clip-list').children].map(r => r.dataset.id);
+        loop.clips.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+        save(); refreshPreview();
+      });
+    }
+    $('clip-list').addEventListener('dragover', e => {
+      e.preventDefault();
+      const list = $('clip-list');
+      const dragging = list.querySelector('.dragging');
+      if (!dragging) return;
+      const after = [...list.querySelectorAll('.clip:not(.dragging)')].reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = e.clientY - box.top - box.height / 2;
+        return (offset < 0 && offset > closest.offset) ? { offset, el: child } : closest;
+      }, { offset: -Infinity }).el;
+      if (after == null) list.appendChild(dragging); else list.insertBefore(dragging, after);
+    });
+
+    /* ── Settings wiring ── */
+    function applySettingsUI() {
+      $('proj-name').value = loop.name || '';
+      $('set-loop').checked = loop.settings.loop;
+      $('set-clipaudio').checked = loop.settings.clipAudio;
+      $('set-startmuted').checked = loop.settings.startMuted;
+      $('set-titles').value = loop.settings.titlesMode;
+      const a = $('audio-name');
+      if (loop.audio) { a.textContent = loop.audio.name; a.classList.add('set'); $('audio-del').style.display = ''; $('audio-add').textContent = 'Replace'; }
+      else { a.textContent = 'No audio added'; a.classList.remove('set'); $('audio-del').style.display = 'none'; $('audio-add').textContent = 'Add'; }
+    }
+    $('proj-name').addEventListener('input', e => { loop.name = e.target.value; save(); });
+    $('set-loop').addEventListener('change', e => { loop.settings.loop = e.target.checked; save(); });
+    $('set-clipaudio').addEventListener('change', e => { loop.settings.clipAudio = e.target.checked; applyClipAudio(); save(); });
+    $('set-startmuted').addEventListener('change', e => { loop.settings.startMuted = e.target.checked; save(); });
+    $('set-titles').addEventListener('change', e => { loop.settings.titlesMode = e.target.value; save(); renderClips(); showName(); });
+
+    /* ── Audio ── */
+    $('audio-add').addEventListener('click', () => $('audio-input').click());
+    $('audio-input').addEventListener('change', async e => {
+      const file = e.target.files[0]; if (!file) return;
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      audioUrl = URL.createObjectURL(file);
+      await idbPut('audio', file);
+      loop.audio = { name: file.name };
+      save(); applySettingsUI(); setupPreviewAudio();
+      e.target.value = '';
+    });
+    $('audio-del').addEventListener('click', async () => {
+      if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
+      await idbDel('audio'); loop.audio = null;
+      previewAudio.pause(); previewAudio.removeAttribute('src');
+      save(); applySettingsUI();
+    });
+
+    /* ── Embed code ── */
+    function embedSnippet() {
+      const slug = slugify(loop.name);
+      return `<iframe src="${EMBED_BASE}/${slug}"\n        style="width:100%;aspect-ratio:16/9;border:0;"\n        allow="autoplay; fullscreen" loading="lazy"></iframe>`;
+    }
+    function renderEmbed() {
+      $('embed-box').textContent = embedSnippet();
+      const ready = loop.clips.length > 0;
+      $('embed-note').innerHTML = ready
+        ? `Paste this into Squarespace, Webflow, or any HTML block. <b>Goes live once you publish</b> (connects to your hosted clips in the next step).`
+        : `Add at least one clip to build your loop.`;
+    }
+    async function copyEmbed() {
+      try { await navigator.clipboard.writeText(embedSnippet()); toast('Embed code copied'); }
+      catch (e) { toast('Copy failed — select the code manually.'); }
+    }
+    $('copy-embed').addEventListener('click', copyEmbed);
+    $('copy-top').addEventListener('click', copyEmbed);
+
+    /* ── File pickers / dropzone ── */
+    $('dropzone').addEventListener('click', () => $('file-input').click());
+    $('file-input').addEventListener('change', e => { handleFiles(e.target.files); e.target.value = ''; });
+    const dz = $('dropzone');
+    ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
+    dz.addEventListener('drop', e => { if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+
+    /* ── Preview engine (sequential, honours settings) ── */
+    const pv = [$('pv0'), $('pv1')];
+    const previewAudio = new Audio();
+    previewAudio.loop = true;
+    let pvActive = 0, pvIndex = 0, currentId = null, pvNameTimer = null, soundOn = false;
+
+    function clipUrl(c) { return urls[c.id]; }
+    function playablePreview() { return loop.clips.filter(c => urls[c.id]); }
+
+    function showName() {
+      const nameEl = $('pv-name');
+      const c = loop.clips.find(x => x.id === currentId);
+      const mode = loop.settings.titlesMode;
+      const show = c && (mode === 'always' || (mode === 'per-clip' && c.showTitle));
+      clearTimeout(pvNameTimer);
+      if (!show) { nameEl.classList.remove('show'); return; }
+      nameEl.textContent = c.title || '';
+      nameEl.classList.add('show');
+      pvNameTimer = setTimeout(() => nameEl.classList.remove('show'), 3000);
+    }
+
+    function applyClipAudio() { pv.forEach(v => v.muted = !loop.settings.clipAudio); }
+
+    function pvPlayAt(i) {
+      const arr = playablePreview();
+      if (!arr.length) return;
+      pvIndex = ((i % arr.length) + arr.length) % arr.length;
+      const clip = arr[pvIndex];
+      currentId = clip.id;
+      const n = 1 - pvActive, vid = pv[n];
+      vid.muted = !loop.settings.clipAudio;
+      if (vid.src !== clipUrl(clip)) vid.src = clipUrl(clip);
+      vid.play().then(() => {
+        pv[n].classList.add('active'); pv[1 - n].classList.remove('active'); pvActive = n;
+        showName();
+        // preload next
+        const next = arr[(pvIndex + 1) % arr.length];
+        if (arr.length > 1 && next) { pv[1 - n].src = clipUrl(next); pv[1 - n].load(); }
+      }).catch(() => {});
+    }
+    pv.forEach(v => v.addEventListener('ended', () => {
+      if (!v.classList.contains('active')) return;
+      const arr = playablePreview();
+      const last = pvIndex >= arr.length - 1;
+      if (last && !loop.settings.loop) return;  // stop at end when not looping
+      pvPlayAt(pvIndex + 1);
+    }));
+
+    function refreshPreview() {
+      const arr = playablePreview();
+      $('pv-empty').style.display = arr.length ? 'none' : 'flex';
+      applyClipAudio();
+      if (arr.length) { pvActive = 0; pvPlayAt(0); } else { pv.forEach(v => { v.pause(); v.removeAttribute('src'); }); currentId = null; }
+    }
+
+    function setupPreviewAudio() {
+      if (audioUrl) { previewAudio.src = audioUrl; previewAudio.muted = !soundOn; if (soundOn) previewAudio.play().catch(() => {}); }
+    }
+    $('pv-sound').addEventListener('click', () => {
+      soundOn = !soundOn;
+      $('pv-icon-off').style.display = soundOn ? 'none' : '';
+      // soundtrack
+      if (audioUrl) { previewAudio.muted = !soundOn; if (soundOn) { previewAudio.src = previewAudio.src || audioUrl; previewAudio.play().catch(() => {}); } }
+      // clip audio follows the same toggle if clip-audio setting is on
+      if (loop.settings.clipAudio) pv.forEach(v => v.muted = !soundOn);
+    });
+
+    /* ── Init ── */
+    async function init() {
+      const saved = loadMeta();
+      loop = saved && saved.settings ? saved : JSON.parse(JSON.stringify(DEFAULTS));
+      // restore blobs
+      for (const c of loop.clips) { const b = await idbGet(c.id); if (b) urls[c.id] = URL.createObjectURL(b); }
+      if (loop.audio) { const b = await idbGet('audio'); if (b) audioUrl = URL.createObjectURL(b); }
+      applySettingsUI(); renderClips(); renderEmbed(); setupPreviewAudio(); refreshPreview();
+
+      // test hook (used only for automated verification)
+      window.__seed = async (n = 3) => {
+        const base = 'https://pub-4d2cbc4d9d64403d8814842155ac7f95.r2.dev/';
+        const names = ['Cabin_anna_clip_00090975.mov','Cabin_anna_clip_00091625.mov','Cabin_anna_clip_00092475.mov','Cabin_anna_clip_00092675.mov','Cabin_anna_clip_00093125.mov'];
+        for (let i = 0; i < Math.min(n, names.length); i++) {
+          const id = uid(); urls[id] = base + names[i];
+          loop.clips.push({ id, file: names[i], title: defaultTitle(names[i]), showTitle: true, duration: 1.5, thumb: '' });
+        }
+        renderClips(); renderEmbed(); refreshPreview();
+        return loop.clips.length;
+      };
+    }
+    init();
+  </script>
+
+</body>
+</html>
