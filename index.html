@@ -117,44 +117,6 @@
 </head>
 <body>
 
-  <!-- ── Access gate (light client-side password) ─────── -->
-  <style>
-    #gate { position: fixed; inset: 0; z-index: 99999; background: #0a0a0b; display: flex; align-items: center; justify-content: center; }
-    #gate.hidden { display: none; }
-    #gate .gate-box { display: flex; flex-direction: column; align-items: center; gap: 0.9rem; width: 90%; max-width: 300px; text-align: center; font-family: 'Inter', -apple-system, sans-serif; }
-    #gate .gate-mark { display: flex; align-items: center; gap: 0.5rem; font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1.4rem; letter-spacing: 0.04em; text-transform: uppercase; color: #f4f4f2; margin-bottom: 0.4rem; }
-    #gate .dot { width: 20px; height: 20px; border: 2.5px solid #E5484D; border-radius: 50%; position: relative; }
-    #gate .dot::after { content: ''; position: absolute; inset: 0; margin: auto; width: 4px; height: 4px; background: #E5484D; border-radius: 50%; }
-    #gate input { width: 100%; padding: 0.75rem 1rem; background: #141417; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #f4f4f2; font-size: 1rem; text-align: center; outline: none; }
-    #gate input:focus { border-color: #E5484D; }
-    #gate input.shake { animation: gate-shake 0.4s; border-color: #E5484D; }
-    #gate button { width: 100%; padding: 0.75rem; background: #E5484D; color: #fff; border: none; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; font-family: 'Inter', sans-serif; }
-    #gate button:hover { background: #d23a3f; }
-    #gate .gate-error { color: #E5484D; font-size: 0.82rem; display: none; margin: 0; }
-    @keyframes gate-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
-  </style>
-  <div id="gate">
-    <form class="gate-box" id="gate-form">
-      <div class="gate-mark"><span class="dot"></span>Reeloop</div>
-      <input type="password" id="gate-input" placeholder="Password" autocomplete="off" autofocus>
-      <button type="submit">Enter</button>
-      <p class="gate-error" id="gate-error">Wrong password — try again.</p>
-    </form>
-  </div>
-  <script>
-    (function () {
-      var KEY = 'reeloop_gate', PW = 'thereelthing';
-      var gate = document.getElementById('gate');
-      if (sessionStorage.getItem(KEY) === '1') { gate.classList.add('hidden'); return; }
-      var form = document.getElementById('gate-form'), input = document.getElementById('gate-input'), err = document.getElementById('gate-error');
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        if (input.value.trim().toLowerCase() === PW) { sessionStorage.setItem(KEY, '1'); gate.classList.add('hidden'); }
-        else { err.style.display = 'block'; input.classList.remove('shake'); void input.offsetWidth; input.classList.add('shake'); input.value = ''; }
-      });
-    })();
-  </script>
-
   <nav>
     <a class="brand" href="#"><span class="dot"></span>Reeloop</a>
     <div class="nav-actions">
